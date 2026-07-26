@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { formatDuration, formatHours, formatMoney } from '../format.js';
+import { formatDuration, formatHours, formatMoney, toDatetimeLocalValue, fromDatetimeLocalValue } from '../format.js';
 import ProjectFormModal from '../components/ProjectFormModal.jsx';
 import EntryForm from '../components/EntryForm.jsx';
 
@@ -15,6 +15,7 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [error, setError] = useState(null);
+  const [timerTimeInput, setTimerTimeInput] = useState(() => toDatetimeLocalValue(new Date().toISOString()));
 
   const load = async () => {
     const [projectData, entriesData] = await Promise.all([
@@ -42,7 +43,8 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const handleStart = async () => {
     setError(null);
     try {
-      await api.startTimer(id);
+      await api.startTimer(id, fromDatetimeLocalValue(timerTimeInput));
+      setTimerTimeInput(toDatetimeLocalValue(new Date().toISOString()));
       await onTimerChange();
     } catch (err) {
       setError(err.message);
@@ -50,8 +52,14 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   };
 
   const handleStop = async () => {
-    await api.stopTimer();
-    await onTimerChange();
+    setError(null);
+    try {
+      await api.stopTimer(fromDatetimeLocalValue(timerTimeInput));
+      setTimerTimeInput(toDatetimeLocalValue(new Date().toISOString()));
+      await onTimerChange();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleDeleteProject = async () => {
@@ -114,6 +122,14 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
       ) : (
         <>
           <div className="timer-controls">
+            <input
+              type="datetime-local"
+              className="timer-time-input"
+              value={timerTimeInput}
+              onChange={(e) => setTimerTimeInput(e.target.value)}
+              aria-label={isActive ? 'Stop time' : 'Start time'}
+              title={isActive ? 'Stop time' : 'Start time'}
+            />
             {isActive ? (
               <button className="icon-button stop-button" onClick={handleStop} title="Stop timer" aria-label="Stop timer">&#9632;</button>
             ) : (

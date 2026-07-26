@@ -242,7 +242,15 @@ label {
 }
 
 .timer-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
+}
+
+.timer-time-input {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
 }
 
 .entries-header {

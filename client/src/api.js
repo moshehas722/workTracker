@@ -29,6 +29,6 @@ export const api = {
   deleteEntry: (id) => request(`/entries/${id}`, { method: 'DELETE' }),
 
   getActiveTimer: () => request('/timer/active'),
-  startTimer: (project_id) => request('/timer/start', { method: 'POST', body: JSON.stringify({ project_id }) }),
-  stopTimer: () => request('/timer/stop', { method: 'POST' }),
+  startTimer: (project_id, start_time) => request('/timer/start', { method: 'POST', body: JSON.stringify({ project_id, start_time }) }),
+  stopTimer: (end_time) => request('/timer/stop', { method: 'POST', body: JSON.stringify({ end_time }) }),
 };
