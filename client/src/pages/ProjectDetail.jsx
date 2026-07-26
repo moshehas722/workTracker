@@ -133,7 +133,6 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
             <span className={`status-badge status-${project.status}`}>{project.status}</span>
           </h1>
           {project.customer_name && <p className="project-customer">{project.customer_name}</p>}
-          <p className="project-rate">{formatMoney(project.hourly_rate, project.currency)} / h</p>
         </div>
         <div className="project-detail-actions">
           {isCompleted ? (
@@ -149,8 +148,18 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
       </div>
 
       <div className="project-stats-row">
-        <span>{formatHours(project.accumulated_seconds)} h accumulated</span>
-        <span>{formatMoney(project.accumulated_amount, project.currency)}</span>
+        <div className="stat">
+          <span className="stat-value">{formatMoney(project.hourly_rate, project.currency)}</span>
+          <span className="stat-label">rate / h</span>
+        </div>
+        <div className="stat">
+          <span className="stat-value">{formatHours(project.accumulated_seconds)}</span>
+          <span className="stat-label">hours</span>
+        </div>
+        <div className="stat">
+          <span className="stat-value">{formatMoney(project.accumulated_amount, project.currency)}</span>
+          <span className="stat-label">total</span>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
