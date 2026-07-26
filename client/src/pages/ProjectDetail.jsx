@@ -79,7 +79,7 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
 
   return (
     <div className="project-detail">
-      <button className="back-link" onClick={() => navigate('/')}>&larr; All projects</button>
+      <button className="back-link icon-button" onClick={() => navigate('/')} title="All projects" aria-label="All projects">&larr;</button>
 
       <div className="project-detail-header">
         <div>
@@ -91,12 +91,12 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
         </div>
         <div className="project-detail-actions">
           {isCompleted ? (
-            <button onClick={handleReopen}>Reopen</button>
+            <button className="icon-button" onClick={handleReopen} title="Reopen" aria-label="Reopen">&#8635;</button>
           ) : (
             <>
-              <button onClick={() => setShowEditProject(true)}>Edit</button>
-              <button onClick={handleMarkCompleted}>Mark completed</button>
-              <button onClick={handleDeleteProject}>Delete</button>
+              <button className="icon-button" onClick={() => setShowEditProject(true)} title="Edit" aria-label="Edit">&#9998;</button>
+              <button className="icon-button" onClick={handleMarkCompleted} title="Mark completed" aria-label="Mark completed">&#10003;</button>
+              <button className="icon-button" onClick={handleDeleteProject} title="Delete" aria-label="Delete">&#10005;</button>
             </>
           )}
         </div>
@@ -115,16 +115,16 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
         <>
           <div className="timer-controls">
             {isActive ? (
-              <button className="stop-button" onClick={handleStop}>Stop timer</button>
+              <button className="icon-button stop-button" onClick={handleStop} title="Stop timer" aria-label="Stop timer">&#9632;</button>
             ) : (
-              <button disabled={isBlocked} onClick={handleStart}>Start timer</button>
+              <button className="icon-button" disabled={isBlocked} onClick={handleStart} title="Start timer" aria-label="Start timer">&#9654;</button>
             )}
           </div>
 
           <div className="entries-header">
             <h2>Time entries</h2>
-            <button onClick={() => setShowAddEntry((v) => !v)}>
-              {showAddEntry ? 'Cancel' : '+ Add manual entry'}
+            <button className="icon-button" onClick={() => setShowAddEntry((v) => !v)} title={showAddEntry ? 'Cancel' : 'Add manual entry'} aria-label={showAddEntry ? 'Cancel' : 'Add manual entry'}>
+              {showAddEntry ? '✕' : '+'}
             </button>
           </div>
 
@@ -184,8 +184,8 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
                     <td className="entry-row-actions">
                       {entry.end_time && (
                         <>
-                          <button onClick={() => setEditingEntryId(entry.id)}>Edit</button>
-                          <button onClick={() => handleDeleteEntry(entry.id)}>Delete</button>
+                          <button className="icon-button" onClick={() => setEditingEntryId(entry.id)} title="Edit" aria-label="Edit">&#9998;</button>
+                          <button className="icon-button" onClick={() => handleDeleteEntry(entry.id)} title="Delete" aria-label="Delete">&#10005;</button>
                         </>
                       )}
                     </td>
