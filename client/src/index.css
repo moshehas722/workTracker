@@ -50,6 +50,12 @@ body {
   border-bottom: 1px solid rgba(127, 127, 127, 0.25);
 }
 
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .app-title {
   font-weight: 700;
   font-size: 1rem;
@@ -242,10 +248,6 @@ label {
   gap: 0.5rem;
 }
 
-.back-link {
-  margin-bottom: 0.5rem;
-}
-
 .project-detail-header {
   display: flex;
   justify-content: space-between;
@@ -264,10 +266,27 @@ label {
 
 .project-stats-row {
   display: flex;
-  gap: 1.5rem;
-  margin: 0.35rem 0 0.5rem;
-  font-weight: 600;
-  font-size: 0.9rem;
+  justify-content: space-between;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.stat-value {
+  font-weight: 700;
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.65;
 }
 
 .entries-header {
@@ -374,8 +393,7 @@ label {
   }
 
   .project-stats-row {
-    flex-direction: column;
-    gap: 0.25rem;
+    gap: 1rem;
   }
 
   .entry-form {

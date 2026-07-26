@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard.jsx';
 import ProjectDetail from './pages/ProjectDetail.jsx';
 import ActiveTimerBanner from './components/ActiveTimerBanner.jsx';
@@ -14,6 +14,8 @@ function getInitialTheme() {
 export default function App() {
   const { active, refresh } = useActiveTimer();
   const [theme, setTheme] = useState(getInitialTheme);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -21,11 +23,17 @@ export default function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+  const showBack = location.pathname.startsWith('/projects/');
 
   return (
     <div className="app">
       <header className="app-header">
-        <Link to="/" className="app-title">Work Tracker</Link>
+        <div className="app-header-left">
+          {showBack && (
+            <button className="icon-button" onClick={() => navigate('/')} title="All projects" aria-label="All projects">&larr;</button>
+          )}
+          <Link to="/" className="app-title">Work Tracker</Link>
+        </div>
         <button
           className="icon-button"
           onClick={toggleTheme}
