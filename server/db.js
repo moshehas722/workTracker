@@ -1,41 +1,45 @@
-import { createClient } from '@libsql/client';
+import { neon } from '@neondatabase/serverless';
 import 'dotenv/config';
 
-export const db = createClient({
-  url: process.env.LIBSQL_URL || 'file:./data/tracker.db',
-  authToken: process.env.LIBSQL_AUTH_TOKEN,
-});
+const sql = neon(process.env.DATABASE_URL, { fullResults: true });
+
+function toPositionalParams(text) {
+  let i = 0;
+  return text.replace(/\?/g, () => `$${++i}`);
+}
+
+export const db = {
+  execute(query) {
+    if (typeof query === 'string') {
+      return sql.query(query, []);
+    }
+    const { sql: text, args = [] } = query;
+    return sql.query(toPositionalParams(text), args);
+  },
+};
 
 export async function migrate() {
-  await db.execute('PRAGMA foreign_keys = ON');
-
   await db.execute(`
     CREATE TABLE IF NOT EXISTS projects (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL,
       hourly_rate REAL NOT NULL DEFAULT 0,
       currency TEXT NOT NULL DEFAULT 'USD',
       status TEXT NOT NULL DEFAULT 'new',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS time_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-      start_time TEXT NOT NULL,
-      end_time TEXT,
+      start_time TIMESTAMPTZ NOT NULL,
+      end_time TIMESTAMPTZ,
       duration_seconds INTEGER,
       note TEXT,
       is_manual INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
-
-  const projectColumns = await db.execute('PRAGMA table_info(projects)');
-  const hasStatusColumn = projectColumns.rows.some((row) => row.name === 'status');
-  if (!hasStatusColumn) {
-    await db.execute("ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'new'");
-  }
 }
