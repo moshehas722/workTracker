@@ -62,8 +62,12 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
 
   const handleDeleteEntry = async (entryId) => {
     if (!confirm('Delete this time entry?')) return;
-    await api.deleteEntry(entryId);
-    await load();
+    try {
+      await api.deleteEntry(entryId);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleMarkCompleted = async () => {
@@ -151,21 +155,20 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
 
       {error && <p className="error">{error}</p>}
 
-      {isCompleted ? (
+      {isCompleted && (
         <p className="empty">This project is completed and view-only. Reopen it to make changes.</p>
-      ) : (
-        <div className="timer-controls">
-          {isActive ? (
-            <button className="icon-button stop-button" onClick={() => setTimerAction('stop')} title="Stop timer" aria-label="Stop timer">&#9632;</button>
-          ) : (
-            <button className="icon-button" disabled={isBlocked} onClick={() => setTimerAction('start')} title="Start timer" aria-label="Start timer">&#9654;</button>
-          )}
-        </div>
       )}
 
       <div className="entries-header">
         <h2>Time entries</h2>
         <div className="entries-header-actions">
+          {!isCompleted && (
+            isActive ? (
+              <button className="icon-button icon-button-lg stop-button" onClick={() => setTimerAction('stop')} title="Stop timer" aria-label="Stop timer">&#9632;</button>
+            ) : (
+              <button className="icon-button icon-button-lg" disabled={isBlocked} onClick={() => setTimerAction('start')} title="Start timer" aria-label="Start timer">&#9654;</button>
+            )
+          )}
           <button className="icon-button" onClick={handleExport} disabled={entries.length === 0} title="Export CSV" aria-label="Export CSV">&#8681;</button>
           {!isCompleted && (
             <>
