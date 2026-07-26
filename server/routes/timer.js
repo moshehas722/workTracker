@@ -30,9 +30,12 @@ timerRouter.post('/start', asyncHandler(async (req, res) => {
     return res.status(409).json({ error: 'a timer is already running', active });
   }
 
-  const project = await db.execute({ sql: 'SELECT id FROM projects WHERE id = ?', args: [project_id] });
+  const project = await db.execute({ sql: 'SELECT id, status FROM projects WHERE id = ?', args: [project_id] });
   if (project.rows.length === 0) {
     return res.status(404).json({ error: 'project not found' });
+  }
+  if (project.rows[0].status === 'completed') {
+    return res.status(409).json({ error: 'cannot start a timer on a completed project' });
   }
 
   const startTime = new Date().toISOString();

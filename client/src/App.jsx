@@ -13,11 +13,11 @@ export default function App() {
         <Link to="/" className="app-title">Work Tracker</Link>
       </header>
 
-      <ActiveTimerBanner active={active} onStopped={refresh} />
+      <ActiveTimerBanner active={active} />
 
       <main>
         <Routes>
-          <Route path="/" element={<Dashboard activeTimer={active} onTimerChange={refresh} />} />
+          <Route path="/" element={<Dashboard activeTimer={active} />} />
           <Route path="/projects/:id" element={<ProjectDetail activeTimer={active} onTimerChange={refresh} />} />
         </Routes>
       </main>

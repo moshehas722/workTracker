@@ -4,10 +4,22 @@ import { api } from '../api.js';
 import { formatHours, formatMoney } from '../format.js';
 import ProjectFormModal from '../components/ProjectFormModal.jsx';
 
-export default function Dashboard({ activeTimer, onTimerChange }) {
+function ProjectCard({ project }) {
+  return (
+    <Link to={`/projects/${project.id}`} className="project-card">
+      <span className="project-name">{project.name}</span>
+      <div className="project-stats">
+        <span>{formatHours(project.accumulated_seconds)} h</span>
+        <span>{formatMoney(project.accumulated_amount, project.currency)}</span>
+      </div>
+      <div className="project-rate">{formatMoney(project.hourly_rate, project.currency)} / h</div>
+    </Link>
+  );
+}
+
+export default function Dashboard({ activeTimer }) {
   const [projects, setProjects] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState(null);
 
   const loadProjects = async () => {
     setProjects(await api.getProjects());
@@ -22,22 +34,10 @@ export default function Dashboard({ activeTimer, onTimerChange }) {
     loadProjects();
   }, [activeTimer?.id]);
 
-  const handleStart = async (projectId) => {
-    setError(null);
-    try {
-      await api.startTimer(projectId);
-      await onTimerChange();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleStop = async () => {
-    await api.stopTimer();
-    await onTimerChange();
-  };
-
   if (!projects) return <p className="loading">Loading…</p>;
+
+  const newProjects = projects.filter((p) => p.status !== 'completed');
+  const completedProjects = projects.filter((p) => p.status === 'completed');
 
   return (
     <div className="dashboard">
@@ -46,33 +46,24 @@ export default function Dashboard({ activeTimer, onTimerChange }) {
         <button onClick={() => setShowForm(true)}>+ New project</button>
       </div>
 
-      {error && <p className="error">{error}</p>}
-
-      {projects.length === 0 && <p className="empty">No projects yet — create one to start tracking time.</p>}
+      {newProjects.length === 0 && <p className="empty">No active projects yet — create one to start tracking time.</p>}
 
       <div className="project-grid">
-        {projects.map((project) => {
-          const isActive = activeTimer && Number(activeTimer.project_id) === Number(project.id);
-          const isBlocked = activeTimer && !isActive;
-
-          return (
-            <div key={project.id} className={`project-card ${isActive ? 'is-active' : ''}`}>
-              <Link to={`/projects/${project.id}`} className="project-name">{project.name}</Link>
-              <div className="project-stats">
-                <span>{formatHours(project.accumulated_seconds)} h</span>
-                <span>{formatMoney(project.accumulated_amount, project.currency)}</span>
-              </div>
-              <div className="project-rate">{formatMoney(project.hourly_rate, project.currency)} / h</div>
-
-              {isActive ? (
-                <button className="stop-button" onClick={handleStop}>Stop</button>
-              ) : (
-                <button disabled={isBlocked} onClick={() => handleStart(project.id)}>Start</button>
-              )}
-            </div>
-          );
-        })}
+        {newProjects.map((project) => (
+          <ProjectCard key={project.id} project={project} />
+        ))}
       </div>
+
+      {completedProjects.length > 0 && (
+        <details className="completed-section">
+          <summary>Completed projects ({completedProjects.length})</summary>
+          <div className="project-grid project-grid-completed">
+            {completedProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </details>
+      )}
 
       {showForm && (
         <ProjectFormModal

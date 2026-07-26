@@ -21,6 +21,7 @@ export const api = {
   createProject: (project) => request('/projects', { method: 'POST', body: JSON.stringify(project) }),
   updateProject: (id, project) => request(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(project) }),
   deleteProject: (id) => request(`/projects/${id}`, { method: 'DELETE' }),
+  setProjectStatus: (id, status) => request(`/projects/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
   getProjectEntries: (id) => request(`/projects/${id}/entries`),
 
   createEntry: (entry) => request('/entries', { method: 'POST', body: JSON.stringify(entry) }),

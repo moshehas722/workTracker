@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDuration } from '../format.js';
-import { api } from '../api.js';
 
-export default function ActiveTimerBanner({ active, onStopped }) {
+export default function ActiveTimerBanner({ active }) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -17,17 +16,9 @@ export default function ActiveTimerBanner({ active, onStopped }) {
 
   if (!active) return null;
 
-  const handleStop = async () => {
-    await api.stopTimer();
-    onStopped();
-  };
-
   return (
-    <div className="active-timer-banner">
-      <span>
-        Tracking <Link to={`/projects/${active.project_id}`}>{active.project_name}</Link> — {formatDuration(elapsed)}
-      </span>
-      <button onClick={handleStop}>Stop</button>
-    </div>
+    <Link to={`/projects/${active.project_id}`} className="active-timer-banner">
+      <span>Tracking <strong>{active.project_name}</strong> — {formatDuration(elapsed)}</span>
+    </Link>
   );
 }

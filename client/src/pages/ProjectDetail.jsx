@@ -35,6 +35,7 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
 
   if (!project || !entries) return <p className="loading">Loading…</p>;
 
+  const isCompleted = project.status === 'completed';
   const isActive = activeTimer && Number(activeTimer.project_id) === Number(id);
   const isBlocked = activeTimer && !isActive;
 
@@ -65,18 +66,39 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
     await load();
   };
 
+  const handleMarkCompleted = async () => {
+    if (!confirm(`Mark "${project.name}" as completed? It will become view-only until reopened.`)) return;
+    await api.setProjectStatus(id, 'completed');
+    await load();
+  };
+
+  const handleReopen = async () => {
+    await api.setProjectStatus(id, 'new');
+    await load();
+  };
+
   return (
     <div className="project-detail">
       <button className="back-link" onClick={() => navigate('/')}>&larr; All projects</button>
 
       <div className="project-detail-header">
         <div>
-          <h1>{project.name}</h1>
+          <h1>
+            {project.name}
+            <span className={`status-badge status-${project.status}`}>{project.status}</span>
+          </h1>
           <p className="project-rate">{formatMoney(project.hourly_rate, project.currency)} / h</p>
         </div>
         <div className="project-detail-actions">
-          <button onClick={() => setShowEditProject(true)}>Edit</button>
-          <button onClick={handleDeleteProject}>Delete</button>
+          {isCompleted ? (
+            <button onClick={handleReopen}>Reopen</button>
+          ) : (
+            <>
+              <button onClick={() => setShowEditProject(true)}>Edit</button>
+              <button onClick={handleMarkCompleted}>Mark completed</button>
+              <button onClick={handleDeleteProject}>Delete</button>
+            </>
+          )}
         </div>
       </div>
 
@@ -87,86 +109,98 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
 
       {error && <p className="error">{error}</p>}
 
-      <div className="timer-controls">
-        {isActive ? (
-          <button className="stop-button" onClick={handleStop}>Stop timer</button>
-        ) : (
-          <button disabled={isBlocked} onClick={handleStart}>Start timer</button>
-        )}
-      </div>
+      {isCompleted ? (
+        <p className="empty">This project is completed and view-only. Reopen it to make changes.</p>
+      ) : (
+        <>
+          <div className="timer-controls">
+            {isActive ? (
+              <button className="stop-button" onClick={handleStop}>Stop timer</button>
+            ) : (
+              <button disabled={isBlocked} onClick={handleStart}>Start timer</button>
+            )}
+          </div>
 
-      <div className="entries-header">
-        <h2>Time entries</h2>
-        <button onClick={() => setShowAddEntry((v) => !v)}>
-          {showAddEntry ? 'Cancel' : '+ Add manual entry'}
-        </button>
-      </div>
+          <div className="entries-header">
+            <h2>Time entries</h2>
+            <button onClick={() => setShowAddEntry((v) => !v)}>
+              {showAddEntry ? 'Cancel' : '+ Add manual entry'}
+            </button>
+          </div>
 
-      {showAddEntry && (
-        <EntryForm
-          onSubmit={async (data) => {
-            await api.createEntry({ ...data, project_id: Number(id) });
-            setShowAddEntry(false);
-            await load();
-          }}
-          onCancel={() => setShowAddEntry(false)}
-        />
+          {showAddEntry && (
+            <EntryForm
+              onSubmit={async (data) => {
+                await api.createEntry({ ...data, project_id: Number(id) });
+                setShowAddEntry(false);
+                await load();
+              }}
+              onCancel={() => setShowAddEntry(false)}
+            />
+          )}
+        </>
       )}
 
-      <table className="entries-table">
-        <thead>
-          <tr>
-            <th>Start</th>
-            <th>End</th>
-            <th>Duration</th>
-            <th>Amount</th>
-            <th>Note</th>
-            <th>Type</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) =>
-            editingEntryId === entry.id ? (
-              <tr key={entry.id}>
-                <td colSpan={7}>
-                  <EntryForm
-                    initial={entry}
-                    onSubmit={async (data) => {
-                      await api.updateEntry(entry.id, data);
-                      setEditingEntryId(null);
-                      await load();
-                    }}
-                    onCancel={() => setEditingEntryId(null)}
-                  />
-                </td>
-              </tr>
-            ) : (
-              <tr key={entry.id}>
-                <td>{entry.start_time ? new Date(entry.start_time).toLocaleString() : '—'}</td>
-                <td>{entry.end_time ? new Date(entry.end_time).toLocaleString() : 'running…'}</td>
-                <td>{entry.duration_seconds != null ? formatDuration(entry.duration_seconds) : '—'}</td>
-                <td>{entry.amount != null ? formatMoney(entry.amount, entry.currency || project.currency) : '—'}</td>
-                <td>{entry.note || ''}</td>
-                <td>{entry.is_manual ? 'Manual' : 'Tracked'}</td>
-                <td className="entry-row-actions">
-                  {entry.end_time && (
-                    <>
-                      <button onClick={() => setEditingEntryId(entry.id)}>Edit</button>
-                      <button onClick={() => handleDeleteEntry(entry.id)}>Delete</button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ),
-          )}
-          {entries.length === 0 && (
+      {isCompleted && <h2>Time entries</h2>}
+
+      <div className="entries-table-wrapper">
+        <table className="entries-table">
+          <thead>
             <tr>
-              <td colSpan={7} className="empty">No time entries yet.</td>
+              <th>Start</th>
+              <th>End</th>
+              <th>Duration</th>
+              <th>Amount</th>
+              <th>Note</th>
+              <th>Type</th>
+              {!isCompleted && <th></th>}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {entries.map((entry) =>
+              editingEntryId === entry.id ? (
+                <tr key={entry.id}>
+                  <td colSpan={7}>
+                    <EntryForm
+                      initial={entry}
+                      onSubmit={async (data) => {
+                        await api.updateEntry(entry.id, data);
+                        setEditingEntryId(null);
+                        await load();
+                      }}
+                      onCancel={() => setEditingEntryId(null)}
+                    />
+                  </td>
+                </tr>
+              ) : (
+                <tr key={entry.id}>
+                  <td>{entry.start_time ? new Date(entry.start_time).toLocaleString() : '—'}</td>
+                  <td>{entry.end_time ? new Date(entry.end_time).toLocaleString() : 'running…'}</td>
+                  <td>{entry.duration_seconds != null ? formatDuration(entry.duration_seconds) : '—'}</td>
+                  <td>{entry.amount != null ? formatMoney(entry.amount, entry.currency || project.currency) : '—'}</td>
+                  <td>{entry.note || ''}</td>
+                  <td>{entry.is_manual ? 'Manual' : 'Tracked'}</td>
+                  {!isCompleted && (
+                    <td className="entry-row-actions">
+                      {entry.end_time && (
+                        <>
+                          <button onClick={() => setEditingEntryId(entry.id)}>Edit</button>
+                          <button onClick={() => handleDeleteEntry(entry.id)}>Delete</button>
+                        </>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ),
+            )}
+            {entries.length === 0 && (
+              <tr>
+                <td colSpan={7} className="empty">No time entries yet.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {showEditProject && (
         <ProjectFormModal

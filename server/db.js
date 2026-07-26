@@ -15,6 +15,7 @@ export async function migrate() {
       name TEXT NOT NULL,
       hourly_rate REAL NOT NULL DEFAULT 0,
       currency TEXT NOT NULL DEFAULT 'USD',
+      status TEXT NOT NULL DEFAULT 'new',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
@@ -31,4 +32,10 @@ export async function migrate() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  const projectColumns = await db.execute('PRAGMA table_info(projects)');
+  const hasStatusColumn = projectColumns.rows.some((row) => row.name === 'status');
+  if (!hasStatusColumn) {
+    await db.execute("ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'new'");
+  }
 }

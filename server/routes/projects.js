@@ -4,46 +4,38 @@ import { asyncHandler } from '../util.js';
 
 export const projectsRouter = Router();
 
+function toProjectResponse(row) {
+  const accumulatedSeconds = Number(row.accumulated_seconds);
+  const hourlyRate = Number(row.hourly_rate);
+  return {
+    id: row.id,
+    name: row.name,
+    hourly_rate: hourlyRate,
+    currency: row.currency,
+    status: row.status,
+    created_at: row.created_at,
+    accumulated_seconds: accumulatedSeconds,
+    accumulated_amount: Number(((accumulatedSeconds / 3600) * hourlyRate).toFixed(2)),
+  };
+}
+
+const PROJECT_WITH_TOTALS_SQL = `
+  SELECT
+    p.id, p.name, p.hourly_rate, p.currency, p.status, p.created_at,
+    COALESCE(SUM(t.duration_seconds), 0) AS accumulated_seconds
+  FROM projects p
+  LEFT JOIN time_entries t ON t.project_id = p.id AND t.end_time IS NOT NULL
+`;
+
 projectsRouter.get('/', asyncHandler(async (req, res) => {
-  const result = await db.execute(`
-    SELECT
-      p.id, p.name, p.hourly_rate, p.currency, p.created_at,
-      COALESCE(SUM(t.duration_seconds), 0) AS accumulated_seconds
-    FROM projects p
-    LEFT JOIN time_entries t ON t.project_id = p.id AND t.end_time IS NOT NULL
-    GROUP BY p.id
-    ORDER BY p.created_at ASC
-  `);
-
-  const projects = result.rows.map((row) => {
-    const accumulatedSeconds = Number(row.accumulated_seconds);
-    const hourlyRate = Number(row.hourly_rate);
-    return {
-      id: row.id,
-      name: row.name,
-      hourly_rate: hourlyRate,
-      currency: row.currency,
-      created_at: row.created_at,
-      accumulated_seconds: accumulatedSeconds,
-      accumulated_amount: Number(((accumulatedSeconds / 3600) * hourlyRate).toFixed(2)),
-    };
-  });
-
-  res.json(projects);
+  const result = await db.execute(`${PROJECT_WITH_TOTALS_SQL} GROUP BY p.id ORDER BY p.created_at ASC`);
+  res.json(result.rows.map(toProjectResponse));
 }));
 
 projectsRouter.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const result = await db.execute({
-    sql: `
-      SELECT
-        p.id, p.name, p.hourly_rate, p.currency, p.created_at,
-        COALESCE(SUM(t.duration_seconds), 0) AS accumulated_seconds
-      FROM projects p
-      LEFT JOIN time_entries t ON t.project_id = p.id AND t.end_time IS NOT NULL
-      WHERE p.id = ?
-      GROUP BY p.id
-    `,
+    sql: `${PROJECT_WITH_TOTALS_SQL} WHERE p.id = ? GROUP BY p.id`,
     args: [id],
   });
 
@@ -51,19 +43,7 @@ projectsRouter.get('/:id', asyncHandler(async (req, res) => {
     return res.status(404).json({ error: 'project not found' });
   }
 
-  const row = result.rows[0];
-  const accumulatedSeconds = Number(row.accumulated_seconds);
-  const hourlyRate = Number(row.hourly_rate);
-
-  res.json({
-    id: row.id,
-    name: row.name,
-    hourly_rate: hourlyRate,
-    currency: row.currency,
-    created_at: row.created_at,
-    accumulated_seconds: accumulatedSeconds,
-    accumulated_amount: Number(((accumulatedSeconds / 3600) * hourlyRate).toFixed(2)),
-  });
+  res.json(toProjectResponse(result.rows[0]));
 }));
 
 projectsRouter.post('/', asyncHandler(async (req, res) => {
@@ -74,7 +54,9 @@ projectsRouter.post('/', asyncHandler(async (req, res) => {
   }
 
   const result = await db.execute({
-    sql: 'INSERT INTO projects (name, hourly_rate, currency) VALUES (?, ?, ?) RETURNING id, name, hourly_rate, currency, created_at',
+    sql: `INSERT INTO projects (name, hourly_rate, currency, status)
+          VALUES (?, ?, ?, 'new')
+          RETURNING id, name, hourly_rate, currency, status, created_at`,
     args: [name.trim(), Number(hourly_rate) || 0, currency],
   });
 
@@ -91,13 +73,41 @@ projectsRouter.put('/:id', asyncHandler(async (req, res) => {
   }
 
   const current = existing.rows[0];
+
+  if (current.status === 'completed') {
+    return res.status(409).json({ error: 'completed projects cannot be edited' });
+  }
+
   const nextName = name !== undefined ? name : current.name;
   const nextRate = hourly_rate !== undefined ? Number(hourly_rate) : current.hourly_rate;
   const nextCurrency = currency !== undefined ? currency : current.currency;
 
   const result = await db.execute({
-    sql: 'UPDATE projects SET name = ?, hourly_rate = ?, currency = ? WHERE id = ? RETURNING id, name, hourly_rate, currency, created_at',
+    sql: `UPDATE projects SET name = ?, hourly_rate = ?, currency = ?
+          WHERE id = ? RETURNING id, name, hourly_rate, currency, status, created_at`,
     args: [nextName, nextRate, nextCurrency, id],
+  });
+
+  res.json(result.rows[0]);
+}));
+
+projectsRouter.post('/:id/status', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (status !== 'new' && status !== 'completed') {
+    return res.status(400).json({ error: "status must be 'new' or 'completed'" });
+  }
+
+  const existing = await db.execute({ sql: 'SELECT id FROM projects WHERE id = ?', args: [id] });
+  if (existing.rows.length === 0) {
+    return res.status(404).json({ error: 'project not found' });
+  }
+
+  const result = await db.execute({
+    sql: `UPDATE projects SET status = ?
+          WHERE id = ? RETURNING id, name, hourly_rate, currency, status, created_at`,
+    args: [status, id],
   });
 
   res.json(result.rows[0]);
@@ -105,6 +115,16 @@ projectsRouter.put('/:id', asyncHandler(async (req, res) => {
 
 projectsRouter.delete('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  const existing = await db.execute({ sql: 'SELECT status FROM projects WHERE id = ?', args: [id] });
+  if (existing.rows.length === 0) {
+    return res.status(204).end();
+  }
+
+  if (existing.rows[0].status === 'completed') {
+    return res.status(409).json({ error: 'completed projects cannot be deleted' });
+  }
+
   await db.execute({ sql: 'DELETE FROM projects WHERE id = ?', args: [id] });
   res.status(204).end();
 }));
