@@ -95,6 +95,7 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
             {project.name}
             <span className={`status-badge status-${project.status}`}>{project.status}</span>
           </h1>
+          {project.customer_name && <p className="project-customer">{project.customer_name}</p>}
           <p className="project-rate">{formatMoney(project.hourly_rate, project.currency)} / h</p>
         </div>
         <div className="project-detail-actions">
