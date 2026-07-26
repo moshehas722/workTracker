@@ -1,6 +1,35 @@
 :root {
   color-scheme: light dark;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bg: #f5f6f8;
+  --fg: #1a1a1a;
+  --modal-bg: #f5f6f8;
+  --modal-fg: #1a1a1a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171a;
+    --fg: #e8e8e8;
+    --modal-bg: #232428;
+    --modal-fg: #e8e8e8;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f5f6f8;
+  --fg: #1a1a1a;
+  --modal-bg: #f5f6f8;
+  --modal-fg: #1a1a1a;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #16171a;
+  --fg: #e8e8e8;
+  --modal-bg: #232428;
+  --modal-fg: #e8e8e8;
 }
 
 * {
@@ -9,18 +38,14 @@
 
 body {
   margin: 0;
-  background: #f5f6f8;
-  color: #1a1a1a;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #16171a;
-    color: #e8e8e8;
-  }
+  background: var(--bg);
+  color: var(--fg);
 }
 
 .app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid rgba(127, 127, 127, 0.25);
 }
@@ -68,6 +93,12 @@ button.stop-button {
   padding: 0;
   line-height: 1;
   font-size: 1rem;
+}
+
+.icon-button-lg {
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.3rem;
 }
 
 input, select {
@@ -198,18 +229,11 @@ label {
 }
 
 .modal {
-  background: #f5f6f8;
-  color: #1a1a1a;
+  background: var(--modal-bg);
+  color: var(--modal-fg);
   padding: 1.5rem;
   border-radius: 10px;
   width: min(320px, 90vw);
-}
-
-@media (prefers-color-scheme: dark) {
-  .modal {
-    background: #232428;
-    color: #e8e8e8;
-  }
 }
 
 .modal-actions, .entry-form-actions {
@@ -244,10 +268,6 @@ label {
   margin: 0.35rem 0 0.5rem;
   font-weight: 600;
   font-size: 0.9rem;
-}
-
-.timer-controls {
-  margin-bottom: 0.75rem;
 }
 
 .entries-header {
@@ -336,6 +356,12 @@ label {
   .icon-button {
     width: 2.25rem;
     height: 2.25rem;
+  }
+
+  .icon-button-lg {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.4rem;
   }
 
   .entry-row-actions .icon-button {

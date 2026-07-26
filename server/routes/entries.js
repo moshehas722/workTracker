@@ -74,9 +74,13 @@ entriesRouter.put('/:id', asyncHandler(async (req, res) => {
 
 entriesRouter.delete('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const existing = await db.execute({ sql: 'SELECT project_id FROM time_entries WHERE id = ?', args: [id] });
+  const existing = await db.execute({ sql: 'SELECT project_id, end_time FROM time_entries WHERE id = ?', args: [id] });
   if (existing.rows.length === 0) {
     return res.status(204).end();
+  }
+
+  if (existing.rows[0].end_time === null) {
+    return res.status(409).json({ error: 'cannot delete an entry that is still in progress' });
   }
 
   const projectStatus = await getProjectStatus(existing.rows[0].project_id);
