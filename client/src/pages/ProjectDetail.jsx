@@ -124,8 +124,6 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
 
   return (
     <div className="project-detail">
-      <button className="back-link icon-button" onClick={() => navigate('/')} title="All projects" aria-label="All projects">&larr;</button>
-
       <div className="project-detail-header">
         <div>
           <h1>

@@ -50,6 +50,12 @@ body {
   border-bottom: 1px solid rgba(127, 127, 127, 0.25);
 }
 
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .app-title {
   font-weight: 700;
   font-size: 1rem;
@@ -242,10 +248,6 @@ label {
   gap: 0.5rem;
 }
 
-.back-link {
-  margin-bottom: 0.5rem;
-}
-
 .project-detail-header {
   display: flex;
   justify-content: space-between;
@@ -264,7 +266,7 @@ label {
 
 .project-stats-row {
   display: flex;
-  gap: 1.5rem;
+  justify-content: space-between;
   margin: 0.5rem 0 0.75rem;
 }
 
