@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { formatDuration, formatHours, formatMoney, toDatetimeLocalValue, fromDatetimeLocalValue } from '../format.js';
+import { formatDuration, formatHours, formatMoney } from '../format.js';
 import { entriesToCsv, parseCsv, downloadCsv } from '../csv.js';
 import ProjectFormModal from '../components/ProjectFormModal.jsx';
 import EntryForm from '../components/EntryForm.jsx';
+import TimerTimeModal from '../components/TimerTimeModal.jsx';
 
 export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const { id } = useParams();
@@ -18,7 +19,7 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [error, setError] = useState(null);
   const [importing, setImporting] = useState(false);
-  const [timerTimeInput, setTimerTimeInput] = useState(() => toDatetimeLocalValue(new Date().toISOString()));
+  const [timerAction, setTimerAction] = useState(null);
 
   const load = async () => {
     const [projectData, entriesData] = await Promise.all([
@@ -43,26 +44,14 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const isActive = activeTimer && Number(activeTimer.project_id) === Number(id);
   const isBlocked = activeTimer && !isActive;
 
-  const handleStart = async () => {
-    setError(null);
-    try {
-      await api.startTimer(id, fromDatetimeLocalValue(timerTimeInput));
-      setTimerTimeInput(toDatetimeLocalValue(new Date().toISOString()));
-      await onTimerChange();
-    } catch (err) {
-      setError(err.message);
-    }
+  const handleStart = async (startTime) => {
+    await api.startTimer(id, startTime);
+    await onTimerChange();
   };
 
-  const handleStop = async () => {
-    setError(null);
-    try {
-      await api.stopTimer(fromDatetimeLocalValue(timerTimeInput));
-      setTimerTimeInput(toDatetimeLocalValue(new Date().toISOString()));
-      await onTimerChange();
-    } catch (err) {
-      setError(err.message);
-    }
+  const handleStop = async (endTime) => {
+    await api.stopTimer(endTime);
+    await onTimerChange();
   };
 
   const handleDeleteProject = async () => {
@@ -166,18 +155,10 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
         <p className="empty">This project is completed and view-only. Reopen it to make changes.</p>
       ) : (
         <div className="timer-controls">
-          <input
-            type="datetime-local"
-            className="timer-time-input"
-            value={timerTimeInput}
-            onChange={(e) => setTimerTimeInput(e.target.value)}
-            aria-label={isActive ? 'Stop time' : 'Start time'}
-            title={isActive ? 'Stop time' : 'Start time'}
-          />
           {isActive ? (
-            <button className="icon-button stop-button" onClick={handleStop} title="Stop timer" aria-label="Stop timer">&#9632;</button>
+            <button className="icon-button stop-button" onClick={() => setTimerAction('stop')} title="Stop timer" aria-label="Stop timer">&#9632;</button>
           ) : (
-            <button className="icon-button" disabled={isBlocked} onClick={handleStart} title="Start timer" aria-label="Start timer">&#9654;</button>
+            <button className="icon-button" disabled={isBlocked} onClick={() => setTimerAction('start')} title="Start timer" aria-label="Start timer">&#9654;</button>
           )}
         </div>
       )}
@@ -282,6 +263,21 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
             await load();
           }}
           onClose={() => setShowEditProject(false)}
+        />
+      )}
+
+      {timerAction && (
+        <TimerTimeModal
+          action={timerAction}
+          onConfirm={async (time) => {
+            if (timerAction === 'start') {
+              await handleStart(time);
+            } else {
+              await handleStop(time);
+            }
+            setTimerAction(null);
+          }}
+          onCancel={() => setTimerAction(null)}
         />
       )}
     </div>
