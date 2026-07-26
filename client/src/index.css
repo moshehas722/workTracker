@@ -183,6 +183,11 @@ label {
   opacity: 0.7;
 }
 
+.project-customer {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -242,7 +247,15 @@ label {
 }
 
 .timer-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
+}
+
+.timer-time-input {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
 }
 
 .entries-header {
@@ -255,6 +268,11 @@ label {
 .entries-header h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.entries-header-actions {
+  display: flex;
+  gap: 0.35rem;
 }
 
 .entry-form {

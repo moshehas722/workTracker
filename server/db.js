@@ -23,12 +23,15 @@ export async function migrate() {
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL,
+      customer_name TEXT,
       hourly_rate REAL NOT NULL DEFAULT 0,
       currency TEXT NOT NULL DEFAULT 'USD',
       status TEXT NOT NULL DEFAULT 'new',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+
+  await db.execute(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_name TEXT`);
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS time_entries (

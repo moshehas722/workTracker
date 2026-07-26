@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { formatDuration, formatHours, formatMoney } from '../format.js';
+import { formatDuration, formatHours, formatMoney, toDatetimeLocalValue, fromDatetimeLocalValue } from '../format.js';
+import { entriesToCsv, parseCsv, downloadCsv } from '../csv.js';
 import ProjectFormModal from '../components/ProjectFormModal.jsx';
 import EntryForm from '../components/EntryForm.jsx';
 
 export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const importInputRef = useRef(null);
 
   const [project, setProject] = useState(null);
   const [entries, setEntries] = useState(null);
@@ -15,6 +17,8 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [error, setError] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [timerTimeInput, setTimerTimeInput] = useState(() => toDatetimeLocalValue(new Date().toISOString()));
 
   const load = async () => {
     const [projectData, entriesData] = await Promise.all([
@@ -42,7 +46,8 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   const handleStart = async () => {
     setError(null);
     try {
-      await api.startTimer(id);
+      await api.startTimer(id, fromDatetimeLocalValue(timerTimeInput));
+      setTimerTimeInput(toDatetimeLocalValue(new Date().toISOString()));
       await onTimerChange();
     } catch (err) {
       setError(err.message);
@@ -50,8 +55,14 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
   };
 
   const handleStop = async () => {
-    await api.stopTimer();
-    await onTimerChange();
+    setError(null);
+    try {
+      await api.stopTimer(fromDatetimeLocalValue(timerTimeInput));
+      setTimerTimeInput(toDatetimeLocalValue(new Date().toISOString()));
+      await onTimerChange();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleDeleteProject = async () => {
@@ -77,6 +88,47 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
     await load();
   };
 
+  const handleExport = () => {
+    const csv = entriesToCsv(entries, project);
+    const filename = `${project.name.replace(/[^a-z0-9]+/gi, '_') || 'project'}-entries.csv`;
+    downloadCsv(filename, csv);
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const text = await file.text();
+    const rows = parseCsv(text);
+    const importable = rows.filter((row) => row.start_time && row.end_time);
+
+    if (importable.length === 0) {
+      setError('No importable rows found. The CSV needs start_time and end_time columns.');
+      return;
+    }
+
+    setImporting(true);
+    setError(null);
+    let imported = 0;
+    try {
+      for (const row of importable) {
+        await api.createEntry({
+          project_id: Number(id),
+          start_time: new Date(row.start_time).toISOString(),
+          end_time: new Date(row.end_time).toISOString(),
+          note: row.note || null,
+        });
+        imported += 1;
+      }
+      await load();
+    } catch (err) {
+      setError(`Import stopped after ${imported} of ${importable.length} rows: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="project-detail">
       <button className="back-link icon-button" onClick={() => navigate('/')} title="All projects" aria-label="All projects">&larr;</button>
@@ -87,6 +139,7 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
             {project.name}
             <span className={`status-badge status-${project.status}`}>{project.status}</span>
           </h1>
+          {project.customer_name && <p className="project-customer">{project.customer_name}</p>}
           <p className="project-rate">{formatMoney(project.hourly_rate, project.currency)} / h</p>
         </div>
         <div className="project-detail-actions">
@@ -112,36 +165,55 @@ export default function ProjectDetail({ activeTimer, onTimerChange }) {
       {isCompleted ? (
         <p className="empty">This project is completed and view-only. Reopen it to make changes.</p>
       ) : (
-        <>
-          <div className="timer-controls">
-            {isActive ? (
-              <button className="icon-button stop-button" onClick={handleStop} title="Stop timer" aria-label="Stop timer">&#9632;</button>
-            ) : (
-              <button className="icon-button" disabled={isBlocked} onClick={handleStart} title="Start timer" aria-label="Start timer">&#9654;</button>
-            )}
-          </div>
-
-          <div className="entries-header">
-            <h2>Time entries</h2>
-            <button className="icon-button" onClick={() => setShowAddEntry((v) => !v)} title={showAddEntry ? 'Cancel' : 'Add manual entry'} aria-label={showAddEntry ? 'Cancel' : 'Add manual entry'}>
-              {showAddEntry ? '✕' : '+'}
-            </button>
-          </div>
-
-          {showAddEntry && (
-            <EntryForm
-              onSubmit={async (data) => {
-                await api.createEntry({ ...data, project_id: Number(id) });
-                setShowAddEntry(false);
-                await load();
-              }}
-              onCancel={() => setShowAddEntry(false)}
-            />
+        <div className="timer-controls">
+          <input
+            type="datetime-local"
+            className="timer-time-input"
+            value={timerTimeInput}
+            onChange={(e) => setTimerTimeInput(e.target.value)}
+            aria-label={isActive ? 'Stop time' : 'Start time'}
+            title={isActive ? 'Stop time' : 'Start time'}
+          />
+          {isActive ? (
+            <button className="icon-button stop-button" onClick={handleStop} title="Stop timer" aria-label="Stop timer">&#9632;</button>
+          ) : (
+            <button className="icon-button" disabled={isBlocked} onClick={handleStart} title="Start timer" aria-label="Start timer">&#9654;</button>
           )}
-        </>
+        </div>
       )}
 
-      {isCompleted && <h2>Time entries</h2>}
+      <div className="entries-header">
+        <h2>Time entries</h2>
+        <div className="entries-header-actions">
+          <button className="icon-button" onClick={handleExport} disabled={entries.length === 0} title="Export CSV" aria-label="Export CSV">&#8681;</button>
+          {!isCompleted && (
+            <>
+              <button className="icon-button" onClick={() => importInputRef.current?.click()} disabled={importing} title="Import CSV" aria-label="Import CSV">&#8679;</button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleImportFile}
+                style={{ display: 'none' }}
+              />
+              <button className="icon-button" onClick={() => setShowAddEntry((v) => !v)} title={showAddEntry ? 'Cancel' : 'Add manual entry'} aria-label={showAddEntry ? 'Cancel' : 'Add manual entry'}>
+                {showAddEntry ? '✕' : '+'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {!isCompleted && showAddEntry && (
+        <EntryForm
+          onSubmit={async (data) => {
+            await api.createEntry({ ...data, project_id: Number(id) });
+            setShowAddEntry(false);
+            await load();
+          }}
+          onCancel={() => setShowAddEntry(false)}
+        />
+      )}
 
       <div className="entries-table-wrapper">
         <table className="entries-table">

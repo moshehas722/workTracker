@@ -10,6 +10,7 @@ function toProjectResponse(row) {
   return {
     id: row.id,
     name: row.name,
+    customer_name: row.customer_name,
     hourly_rate: hourlyRate,
     currency: row.currency,
     status: row.status,
@@ -21,7 +22,7 @@ function toProjectResponse(row) {
 
 const PROJECT_WITH_TOTALS_SQL = `
   SELECT
-    p.id, p.name, p.hourly_rate, p.currency, p.status, p.created_at,
+    p.id, p.name, p.customer_name, p.hourly_rate, p.currency, p.status, p.created_at,
     COALESCE(SUM(t.duration_seconds), 0) AS accumulated_seconds
   FROM projects p
   LEFT JOIN time_entries t ON t.project_id = p.id AND t.end_time IS NOT NULL
@@ -47,17 +48,19 @@ projectsRouter.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 projectsRouter.post('/', asyncHandler(async (req, res) => {
-  const { name, hourly_rate = 0, currency = 'USD' } = req.body;
+  const { name, customer_name = null, hourly_rate = 0, currency = 'USD' } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
 
+  const trimmedCustomer = typeof customer_name === 'string' ? customer_name.trim() : null;
+
   const result = await db.execute({
-    sql: `INSERT INTO projects (name, hourly_rate, currency, status)
-          VALUES (?, ?, ?, 'new')
-          RETURNING id, name, hourly_rate, currency, status, created_at`,
-    args: [name.trim(), Number(hourly_rate) || 0, currency],
+    sql: `INSERT INTO projects (name, customer_name, hourly_rate, currency, status)
+          VALUES (?, ?, ?, ?, 'new')
+          RETURNING id, name, customer_name, hourly_rate, currency, status, created_at`,
+    args: [name.trim(), trimmedCustomer || null, Number(hourly_rate) || 0, currency],
   });
 
   res.status(201).json(result.rows[0]);
@@ -65,7 +68,7 @@ projectsRouter.post('/', asyncHandler(async (req, res) => {
 
 projectsRouter.put('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, hourly_rate, currency } = req.body;
+  const { name, customer_name, hourly_rate, currency } = req.body;
 
   const existing = await db.execute({ sql: 'SELECT * FROM projects WHERE id = ?', args: [id] });
   if (existing.rows.length === 0) {
@@ -79,13 +82,16 @@ projectsRouter.put('/:id', asyncHandler(async (req, res) => {
   }
 
   const nextName = name !== undefined ? name : current.name;
+  const nextCustomer = customer_name !== undefined
+    ? (typeof customer_name === 'string' ? customer_name.trim() || null : null)
+    : current.customer_name;
   const nextRate = hourly_rate !== undefined ? Number(hourly_rate) : current.hourly_rate;
   const nextCurrency = currency !== undefined ? currency : current.currency;
 
   const result = await db.execute({
-    sql: `UPDATE projects SET name = ?, hourly_rate = ?, currency = ?
-          WHERE id = ? RETURNING id, name, hourly_rate, currency, status, created_at`,
-    args: [nextName, nextRate, nextCurrency, id],
+    sql: `UPDATE projects SET name = ?, customer_name = ?, hourly_rate = ?, currency = ?
+          WHERE id = ? RETURNING id, name, customer_name, hourly_rate, currency, status, created_at`,
+    args: [nextName, nextCustomer, nextRate, nextCurrency, id],
   });
 
   res.json(result.rows[0]);

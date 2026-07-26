@@ -8,6 +8,7 @@ function ProjectCard({ project }) {
   return (
     <Link to={`/projects/${project.id}`} className="project-card">
       <span className="project-name">{project.name}</span>
+      {project.customer_name && <span className="project-customer">{project.customer_name}</span>}
       <div className="project-stats">
         <span>{formatHours(project.accumulated_seconds)} h</span>
         <span>{formatMoney(project.accumulated_amount, project.currency)}</span>
