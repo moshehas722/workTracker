@@ -270,6 +270,11 @@ label {
   font-size: 1.05rem;
 }
 
+.entries-header-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
 .entry-form {
   display: flex;
   gap: 1rem;
