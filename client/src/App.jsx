@@ -32,7 +32,7 @@ export default function App() {
           {showBack && (
             <button className="icon-button" onClick={() => navigate('/')} title="All projects" aria-label="All projects">&larr;</button>
           )}
-          <Link to="/" className="app-title">Work Tracker</Link>
+          <Link to="/" className="app-title">Time Tracker</Link>
         </div>
         <button
           className="icon-button"
